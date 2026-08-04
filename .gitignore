@@ -2,5 +2,9 @@
 __pycache__/
 *.pyc
 .DS_Store
-data/
+data/*
+!data/severstal/
+data/severstal/*
+!data/severstal/train_split.csv
+!data/severstal/val_split.csv
 .ipynb_checkpoints/
