@@ -1,10 +1,26 @@
 .venv/
 __pycache__/
 *.pyc
+*.pyo
 .DS_Store
+.ipynb_checkpoints/
+*.egg-info/
+.pytest_cache/
+
+# Large / local artifacts
+*.pt
+*.pth
+runs/
+severstal-steel-defect-detection/
+severstal-steel-defect-detection.zip
+
+# Raw images live via local junction / download — keep only small CSVs tracked
 data/*
 !data/severstal/
 data/severstal/*
 !data/severstal/train_split.csv
 !data/severstal/val_split.csv
-.ipynb_checkpoints/
+!data/splits/
+data/splits/*
+!data/splits/*.txt
+!data/splits/summary.json
