@@ -14,7 +14,7 @@ sys.path.insert(0, str(ROOT / "src"))
 from rare_defect.data.rle import rle_decode, rle_encode
 from rare_defect.losses import BCEDiceLoss
 from rare_defect.metrics import summarize
-from rare_defect.models import MaskCVAE, MaskDiffusion, PatchGenerator, StyleGANGenerator, UNet
+from rare_defect.models import MaskDiffusion, PatchGenerator, StyleGANGenerator, UNet
 from rare_defect.report import build_report_from_masks
 
 
@@ -28,7 +28,6 @@ def main() -> None:
 
     patch = torch.rand(2, 3, 128, 128)
     m = torch.rand(2, 1, 128, 128)
-    assert MaskCVAE(latent_dim=16)(patch, m)[0].shape == patch.shape
     assert PatchGenerator(latent_dim=16)(torch.randn(2, 16), m).shape == patch.shape
 
     sg = StyleGANGenerator(latent_dim=16, style_dim=32, base_channels=64)

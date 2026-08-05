@@ -1,4 +1,7 @@
-"""Train cvae | cgan | stylegan | diffusion on train-only rare defect patches."""
+"""Train cgan | stylegan | diffusion on train-only rare defect patches.
+
+cVAE lives in Track A (`app/models/`) — do not duplicate it here.
+"""
 
 from __future__ import annotations
 
@@ -14,20 +17,19 @@ sys.path.insert(0, str(ROOT / "src"))
 from rare_defect.config import load_config, resolve_device
 from rare_defect.data import DefectPatchDataset
 from rare_defect.models import (
-    MaskCVAE,
     MaskDiffusion,
     PatchCritic,
     PatchGenerator,
     StyleGANDiscriminator,
     StyleGANGenerator,
 )
-from rare_defect.training import train_cgan, train_cvae, train_diffusion, train_stylegan
+from rare_defect.training import train_cgan, train_diffusion, train_stylegan
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=Path, default=ROOT / "configs" / "default.yaml")
-    parser.add_argument("--model", choices=["cvae", "cgan", "stylegan", "diffusion"], required=True)
+    parser.add_argument("--model", choices=["cgan", "stylegan", "diffusion"], required=True)
     parser.add_argument("--class-id", type=int, default=None)
     parser.add_argument("--epochs", type=int, default=None)
     args = parser.parse_args()
@@ -57,16 +59,7 @@ def main() -> None:
     print(f"model={args.model}  patches={len(ds)}  device={device}  out={out}")
 
     gcfg = cfg["generator"]
-    if args.model == "cvae":
-        train_cvae(
-            MaskCVAE(latent_dim=gcfg["latent_dim"]),
-            loader,
-            epochs=epochs,
-            lr=gcfg["lr"],
-            device=device,
-            out_dir=out,
-        )
-    elif args.model == "cgan":
+    if args.model == "cgan":
         train_cgan(
             PatchGenerator(latent_dim=gcfg["latent_dim"]),
             PatchCritic(),

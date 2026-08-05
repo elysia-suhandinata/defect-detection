@@ -22,7 +22,6 @@ from rare_defect.data import (
 )
 from rare_defect.losses import BCEDiceLoss
 from rare_defect.models import (
-    MaskCVAE,
     MaskDiffusion,
     PatchGenerator,
     StyleGANGenerator,
@@ -37,8 +36,8 @@ from rare_defect.training import (
 )
 from rare_defect.training.selection import load_clean_and_mask_bank
 
+# cVAE is Track A only (`app/models/`); Track B adds mask-aware GAN / diffusion arms.
 GEN_ARMS = {
-    "cvae_selected": "cvae",
     "cgan_selected": "cgan",
     "stylegan_selected": "stylegan",
     "diffusion_selected": "diffusion",
@@ -81,10 +80,6 @@ def build_loaders(cfg, arm, synthetics=None):
 def load_generator(kind, cfg, class_id, device):
     gcfg = cfg["generator"]
     ckpt_dir = ROOT / cfg["runs_dir"] / f"generator_{kind}_c{class_id}"
-    if kind == "cvae":
-        gen = MaskCVAE(latent_dim=gcfg["latent_dim"]).to(device)
-        gen.load_state_dict(torch.load(ckpt_dir / "cvae.pt", map_location=device))
-        return gen
     if kind == "cgan":
         gen = PatchGenerator(latent_dim=gcfg["latent_dim"]).to(device)
         gen.load_state_dict(torch.load(ckpt_dir / "cgan.pt", map_location=device)["generator"])

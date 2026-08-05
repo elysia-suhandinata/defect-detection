@@ -6,39 +6,16 @@ from pathlib import Path
 
 import torch
 import torch.nn.functional as F
-from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from rare_defect.models import (
-    MaskCVAE,
     MaskDiffusion,
     PatchCritic,
     PatchGenerator,
     StyleGANDiscriminator,
     StyleGANGenerator,
-    cvae_loss,
     gradient_penalty,
 )
-
-
-def train_cvae(model: MaskCVAE, loader, *, epochs, lr, device, out_dir, beta=1.0):
-    out_dir = Path(out_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
-    opt = torch.optim.Adam(model.parameters(), lr=lr)
-    model.to(device)
-    for epoch in range(1, epochs + 1):
-        model.train()
-        total = 0.0
-        for batch in tqdm(loader, desc=f"cvae {epoch}", leave=False):
-            x, m = batch["image"].to(device), batch["mask"].to(device)
-            opt.zero_grad(set_to_none=True)
-            recon, mu, logvar = model(x, m)
-            loss = cvae_loss(recon, x, mu, logvar, beta=beta)
-            loss.backward()
-            opt.step()
-            total += loss.item() * x.size(0)
-        print(f"cvae epoch {epoch:03d}  loss={total / max(len(loader.dataset), 1):.4f}")
-        torch.save(model.state_dict(), out_dir / "cvae.pt")
 
 
 def _wgan_loop(generator, critic, loader, *, epochs, lr, device, out_dir, ckpt_name, n_critic=5, gp_weight=10.0, betas=(0.0, 0.9)):

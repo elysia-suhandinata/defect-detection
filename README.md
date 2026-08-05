@@ -9,7 +9,7 @@ Same research thread, two evaluation settings:
 | **A. Classification** | multi-label CNN | `app/models/` | Do class weights / oversampling / cVAE image synth help rare-class F1? |
 | **B. Segmentation** | U-Net + mask-aware gens | `src/rare_defect/` | Does mask-conditioned generation + validation-utility selection improve rare-class Dice / FNR? |
 
-Track A results are already in `results/results.csv`. Track B is the stronger framing for the final write-up (pixel masks, Copy-Paste, cVAE/cGAN/StyleGAN/Diffusion + sample selection).
+Track A results are already in `results/results.csv`. Track B is the stronger framing for the final write-up (pixel masks, Copy-Paste, cGAN/StyleGAN/Diffusion + sample selection). cVAE stays in Track A only.
 
 ## Layout
 
@@ -80,12 +80,10 @@ python scripts/run_experiment.py --arm baseline
 python scripts/run_experiment.py --arm weighted
 python scripts/run_experiment.py --arm copy_paste
 
-python scripts/train_generator.py --model cvae
 python scripts/train_generator.py --model cgan
 python scripts/train_generator.py --model stylegan
 python scripts/train_generator.py --model diffusion
 
-python scripts/run_experiment.py --arm cvae_selected
 python scripts/run_experiment.py --arm cgan_selected
 python scripts/run_experiment.py --arm stylegan_selected
 python scripts/run_experiment.py --arm diffusion_selected
