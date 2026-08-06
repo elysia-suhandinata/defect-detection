@@ -1,0 +1,66 @@
+{
+  "created_at_utc": "2026-08-06T13:08:28.535854+00:00",
+  "command": "uv run python evaluate_all.py --image-dir '<external train_images directory>' --threshold 0.5 --fn-cost 10.0 --fp-cost 1.0 --fn-fp-ratios 1.0,2.0,5.0,10.0,20.0 --output-dir results/unified",
+  "config": {
+    "project_root": ".",
+    "image_dir": "<external path; supply with --image-dir when rerunning>",
+    "val_csv": "data/severstal/val_split.csv",
+    "checkpoint_dir": "app/models",
+    "legacy_results_csv": "results/results.csv",
+    "output_dir": "results/unified",
+    "threshold": 0.5,
+    "fn_cost": 10.0,
+    "fp_cost": 1.0,
+    "fn_fp_ratios": [
+      1.0,
+      2.0,
+      5.0,
+      10.0,
+      20.0
+    ],
+    "batch_size": 32,
+    "device": "auto",
+    "legacy_tolerance": 0.0001
+  },
+  "device_used": "mps",
+  "methods": [
+    "baseline",
+    "weighted",
+    "oversampled",
+    "vae_augmented",
+    "vae_oversampled",
+    "gan_oversampled",
+    "rl_oversampled"
+  ],
+  "class_order": [
+    "class_1",
+    "class_2",
+    "class_3",
+    "class_4"
+  ],
+  "validation_sample_count": 2514,
+  "validation_csv_sha256": "6aa62979bc3bcd9194912614a57e2e39c8d7f526632ba1524e19d7184b45b00f",
+  "checkpoint_sha256": {
+    "baseline": "f71f3946b279a3d187d787cc1cc0d7551588c5535ea9fccceb5f04f9c70de85a",
+    "weighted": "5ae260dedec02524e737a9f2d39fa5e8804e28cde8939fe06a32d90520032ac9",
+    "oversampled": "7668bc7949891d8059e16ffee32e60e37780f83fb5ce1bbd96bfdd5d94b37439",
+    "vae_augmented": "9979525529b9661ff245c4184999409bc7c5fd9b80d400f2bafbacaad015cc0d",
+    "vae_oversampled": "8022888af52d26f7a4061d83642d89239fde56316036f4b395ab5a489afdb8c6",
+    "gan_oversampled": "9396e25e81700952e568e9e0905d31c05f8414fe3fbf931b730a2b84142d271a",
+    "rl_oversampled": "7b5fbcfab30717b5de8eb168724054519d6c4279ade5ecd6a4ae8c01b6ac656d"
+  },
+  "artifacts": [
+    "metrics.csv",
+    "predictions.csv.gz",
+    "legacy_comparison.csv",
+    "cost_sensitivity.csv",
+    "figures/model_comparison_macro_metrics.png",
+    "figures/precision_recall_class_1.png",
+    "figures/precision_recall_class_2.png",
+    "figures/precision_recall_class_3.png",
+    "figures/precision_recall_class_4.png",
+    "figures/cost_sensitivity.png",
+    "run_manifest.json"
+  ],
+  "legacy_matches": true
+}
