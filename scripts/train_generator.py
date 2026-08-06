@@ -1,6 +1,6 @@
 """Train cgan | stylegan | diffusion on train-only rare defect patches.
 
-cVAE lives in Track A (`app/models/`) — do not duplicate it here.
+cVAE lives in the classification path (`app/models/`) — do not duplicate it here.
 """
 
 from __future__ import annotations

@@ -1,6 +1,6 @@
-"""Validation-utility sample selection (Module 9 slim feedback).
+"""Static top-k utility selection (ablation) and candidate helpers.
 
-Policy = top-k / mix-ratio; reward = val rare Dice. Not PPO on the decoder.
+For the REINFORCE keep/reject loop see ``rl_loop.py``.
 Synthetics never enter the test set.
 """
 
@@ -14,7 +14,7 @@ import torch
 from PIL import Image
 from torch.utils.data import Dataset
 
-from rare_defect.data import SeverstalSegDataset, load_annotation_map, load_split_ids
+from rare_defect.data import load_annotation_map, load_split_ids
 from rare_defect.data.rle import rle_decode
 from rare_defect.metrics import SegMetrics
 from rare_defect.models import UNet
@@ -25,10 +25,11 @@ class SyntheticSample:
     image: np.ndarray
     mask: np.ndarray
     score: float = 0.0
+    generator_kind: str = ""
 
 
 class MixedSegDataset(Dataset):
-    def __init__(self, real: SeverstalSegDataset, synthetics: list[SyntheticSample]):
+    def __init__(self, real: Dataset, synthetics: list[SyntheticSample]):
         self.real = real
         self.synthetics = synthetics
 
@@ -80,7 +81,9 @@ def generate_candidates(
         m = torch.from_numpy(m_np[None, None]).float().to(device)
         patch = np.clip(generator.sample(m, n=1)[0].cpu().numpy().transpose(1, 2, 0), 0, 1)
         img, mask = _paste_patch_on_clean(clean, patch, m_np, class_id)
-        samples.append(SyntheticSample(image=img, mask=mask))
+        samples.append(
+            SyntheticSample(image=img, mask=mask, generator_kind=model_kind or "")
+        )
     return samples
 
 

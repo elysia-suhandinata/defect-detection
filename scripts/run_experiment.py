@@ -32,20 +32,27 @@ from rare_defect.training import (
     evaluate,
     fit_segmenter,
     generate_candidates,
+    run_reinforce_selection,
     score_candidates_with_frozen_segmenter,
 )
 from rare_defect.training.selection import load_clean_and_mask_bank
 
-# cVAE is Track A only (`app/models/`); Track B adds mask-aware GAN / diffusion arms.
-GEN_ARMS = {
+# Generators propose candidates; *_selected = static top-k, *_rl = REINFORCE.
+TOPK_ARMS = {
     "cgan_selected": "cgan",
     "stylegan_selected": "stylegan",
     "diffusion_selected": "diffusion",
 }
+RL_ARMS = {
+    "cgan_rl": "cgan",
+    "stylegan_rl": "stylegan",
+    "diffusion_rl": "diffusion",
+}
+GEN_ARMS = {**TOPK_ARMS, **RL_ARMS}
 ALL_ARMS = ["baseline", "weighted", "copy_paste", *GEN_ARMS]
 
 
-def build_loaders(cfg, arm, synthetics=None):
+def build_base_datasets(cfg, arm):
     raw = ROOT / cfg["data"]["raw_root"]
     splits = ROOT / cfg["data"]["splits_dir"]
     size = (cfg["image_height"], cfg["image_width"])
@@ -65,10 +72,12 @@ def build_loaders(cfg, arm, synthetics=None):
     train_ds = SeverstalSegDataset(
         raw, splits, "train", image_size=size, transform=transform, copy_paste=copy_paste
     )
-    if synthetics:
-        train_ds = MixedSegDataset(train_ds, synthetics)
     val_ds = SeverstalSegDataset(raw, splits, "val", image_size=size)
     test_ds = SeverstalSegDataset(raw, splits, "test", image_size=size)
+    return train_ds, val_ds, test_ds
+
+
+def make_loaders(cfg, train_ds, val_ds, test_ds):
     bs, nw = cfg["segmenter"]["batch_size"], cfg["segmenter"]["num_workers"]
     return (
         DataLoader(train_ds, batch_size=bs, shuffle=True, num_workers=nw),
@@ -102,7 +111,7 @@ def load_generator(kind, cfg, class_id, device):
     raise ValueError(kind)
 
 
-def maybe_build_synthetics(cfg, arm, device, seed_model):
+def maybe_build_synthetics(cfg, arm, device, seed_model, train_ds, val_loader):
     if arm not in GEN_ARMS:
         return None
     kind = GEN_ARMS[arm]
@@ -129,9 +138,23 @@ def maybe_build_synthetics(cfg, arm, device, seed_model):
         device=device,
         model_kind=kind,
     )
-    ranked = score_candidates_with_frozen_segmenter(seed_model, candidates, device, class_id)
-    selected = ranked[: cfg["generator"]["num_selected"]]
-    print(f"[{kind}] selected {len(selected)} / {len(candidates)}")
+
+    if arm in RL_ARMS:
+        out = ROOT / cfg["runs_dir"] / f"arm_{arm}"
+        selected = run_reinforce_selection(
+            candidates,
+            seed_model=seed_model,
+            real_train_ds=train_ds,
+            val_loader=val_loader,
+            cfg=cfg,
+            device=device,
+            generator_kind=kind,
+            out_dir=out,
+        )
+    else:
+        ranked = score_candidates_with_frozen_segmenter(seed_model, candidates, device, class_id)
+        selected = ranked[: cfg["generator"]["num_selected"]]
+        print(f"[{kind}] top-k selected {len(selected)} / {len(candidates)}")
     return selected
 
 
@@ -146,15 +169,23 @@ def main() -> None:
     device = resolve_device(cfg.get("device", "cuda"))
     torch.manual_seed(cfg["seed"])
 
+    train_ds, val_ds, test_ds = build_base_datasets(cfg, args.arm)
+    _, val_loader, _ = make_loaders(cfg, train_ds, val_ds, test_ds)
+
     seed_model = UNet(num_classes=cfg["num_classes"], base=cfg["segmenter"]["base_channels"]).to(device)
     synthetics = None
     if args.arm in GEN_ARMS:
         baseline_ckpt = ROOT / cfg["runs_dir"] / "arm_baseline" / "best.pt"
         if baseline_ckpt.exists():
             seed_model.load_state_dict(torch.load(baseline_ckpt, map_location=device)["model"])
-        synthetics = maybe_build_synthetics(cfg, args.arm, device, seed_model)
+        synthetics = maybe_build_synthetics(
+            cfg, args.arm, device, seed_model, train_ds, val_loader
+        )
 
-    train_loader, val_loader, test_loader = build_loaders(cfg, args.arm, synthetics)
+    if synthetics:
+        train_ds = MixedSegDataset(train_ds, synthetics)
+    train_loader, val_loader, test_loader = make_loaders(cfg, train_ds, val_ds, test_ds)
+
     weights = cfg["segmenter"]["class_weights"] if args.arm == "weighted" else None
     criterion = BCEDiceLoss(
         bce_weight=cfg["segmenter"]["bce_weight"],
@@ -194,6 +225,7 @@ def main() -> None:
         "arm": args.arm,
         "val_best_rare_dice": result["best_rare_dice"],
         "test": test_metrics.__dict__,
+        "selection": "rl" if args.arm in RL_ARMS else ("topk" if args.arm in TOPK_ARMS else None),
     }
     (out / "test_metrics.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
     print("TEST", payload)

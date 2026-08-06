@@ -4,12 +4,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import numpy as np
 import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from rare_defect.losses import BCEDiceLoss
-from rare_defect.metrics import SegMetrics, summarize
+from rare_defect.metrics import SegMetrics, expected_cost
 from rare_defect.models import UNet
 
 
@@ -35,18 +36,53 @@ def evaluate(
     rare_class_id: int = 2,
     fn_cost: float = 10.0,
     fp_cost: float = 1.0,
+    threshold: float = 0.5,
+    eps: float = 1e-6,
 ) -> SegMetrics:
+    """Stream Dice / FNR over batches — never materialize the full val set."""
     model.eval()
-    all_logits, all_masks = [], []
+    inter = pred_sum = tgt_sum = None
+    tp = fn = fp = tn = 0
+
     for batch in tqdm(loader, desc="eval", leave=False):
-        all_logits.append(model(batch["image"].to(device)).cpu())
-        all_masks.append(batch["mask"])
-    return summarize(
-        torch.cat(all_logits),
-        torch.cat(all_masks),
-        rare_class_id=rare_class_id,
-        fn_cost=fn_cost,
-        fp_cost=fp_cost,
+        logits = model(batch["image"].to(device))
+        probs = torch.sigmoid(logits).float()
+        targets = batch["mask"].to(device=device, dtype=torch.float32)
+        binary = (probs > threshold).float()
+
+        if inter is None:
+            c = binary.shape[1]
+            inter = torch.zeros(c, device=device)
+            pred_sum = torch.zeros(c, device=device)
+            tgt_sum = torch.zeros(c, device=device)
+
+        dims = (0, 2, 3)
+        inter += (binary * targets).sum(dim=dims)
+        pred_sum += binary.sum(dim=dims)
+        tgt_sum += targets.sum(dim=dims)
+
+        pred_pos = (binary.flatten(1) > 0).any(dim=1)
+        true_pos = (targets.flatten(1) > 0.5).any(dim=1)
+        tp += int((pred_pos & true_pos).sum().item())
+        fn += int((~pred_pos & true_pos).sum().item())
+        fp += int((pred_pos & ~true_pos).sum().item())
+        tn += int((~pred_pos & ~true_pos).sum().item())
+
+    if inter is None:
+        raise RuntimeError("empty eval loader")
+
+    dices = ((2 * inter + eps) / (pred_sum + tgt_sum + eps)).detach().cpu()
+    per_class = dices.tolist()
+    fnr = fn / (fn + tp + 1e-8)
+    fpr = fp / (fp + tn + 1e-8)
+    rare_idx = rare_class_id - 1
+    return SegMetrics(
+        mean_dice=float(np.mean(per_class)),
+        per_class_dice=per_class,
+        rare_dice=float(per_class[rare_idx]),
+        fnr=float(fnr),
+        fpr=float(fpr),
+        expected_cost=expected_cost(float(fnr), float(fpr), fn_cost, fp_cost),
     )
 
 

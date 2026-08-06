@@ -46,6 +46,16 @@ selection:
   metric: rare_dice
   search: grid
 
+# REINFORCE keep/reject over generator candidates (not PPO on the decoder).
+rl:
+  episodes: 20
+  finetune_epochs: 2
+  lr: 1.0e-3
+  baseline_momentum: 0.9
+  min_keep: 20
+  max_keep: 100
+  reward_real_samples: 256
+
 cost_model:
   fn_cost: 10.0
   fp_cost: 1.0

@@ -16,6 +16,8 @@ from rare_defect.losses import BCEDiceLoss
 from rare_defect.metrics import summarize
 from rare_defect.models import MaskDiffusion, PatchGenerator, StyleGANGenerator, UNet
 from rare_defect.report import build_report_from_masks
+from rare_defect.training import SelectionPolicy, candidate_features
+from rare_defect.training.selection import SyntheticSample
 
 
 def main() -> None:
@@ -42,6 +44,20 @@ def main() -> None:
     assert 0.0 <= metrics.mean_dice <= 1.0
     text = build_report_from_masks("demo.jpg", {2: 0.9}, {2: 0.01})
     assert any(k in text for k in ("HOLD", "FLAG", "PASS", "SOFT"))
+
+    synth = [
+        SyntheticSample(
+            image=np.random.rand(64, 64, 3).astype(np.float32),
+            mask=np.zeros((4, 64, 64), dtype=np.float32),
+            score=0.3,
+            generator_kind="stylegan",
+        )
+    ]
+    synth[0].mask[1, 10:20, 10:20] = 1.0
+    feats = candidate_features(synth, class_id=2, generator_kind="stylegan")
+    assert feats.shape == (1, 8)
+    probs = SelectionPolicy()(feats)
+    assert probs.shape == (1,) and 0.0 <= float(probs[0].detach()) <= 1.0
 
     loss = BCEDiceLoss()(torch.randn(1, 4, 32, 32), torch.zeros(1, 4, 32, 32))
     print("smoke ok", float(loss))
