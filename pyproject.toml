@@ -4,20 +4,21 @@ version = "0.1.0"
 description = "Severstal steel defect detection: classification baselines and mask-aware generative augmentation"
 requires-python = ">=3.12"
 dependencies = [
+    "anthropic>=0.120.2",
     "fastapi>=0.141.1",
     "kaggle>=2.2.4",
-    "matplotlib>=3.8",
+    "matplotlib>=3.11.1",
     "numpy>=2.0",
-    "pandas>=2.0",
+    "pandas>=3.0.5",
     "pillow>=10.0",
     "pyyaml>=6.0",
-    "scikit-learn>=1.4",
-    "torch>=2.0",
-    "torchvision>=0.15",
+    "python-multipart>=0.0.32",
+    "scikit-learn>=1.9.0",
+    "torch>=2.13.0",
+    "torchvision>=0.28.0",
     "tqdm>=4.66",
     "uvicorn>=0.52.1",
 ]
-
 [build-system]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
