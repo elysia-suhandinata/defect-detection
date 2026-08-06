@@ -24,3 +24,8 @@ vae_oversampled,class_2,0.3636,0.56,0.4409
 vae_oversampled,class_3,0.7254,0.7408,0.733
 vae_oversampled,class_4,0.3058,0.2418,0.2701
 vae_oversampled,macro_avg,0.4936,0.4699,0.4675
+gan_oversampled,class_1,0.6977,0.3261,0.4444
+gan_oversampled,class_2,0.52,0.52,0.52
+gan_oversampled,class_3,0.7961,0.6799,0.7334
+gan_oversampled,class_4,0.4225,0.3922,0.4068
+gan_oversampled,macro_avg,0.6091,0.4795,0.5262
