@@ -30,6 +30,6 @@ async def predict(file: UploadFile = File(...)) -> dict:
         )
 
     result = run_mock_inference(file.filename or "uploaded_image")
-    result["inspection_report"] = generate_inspection_report(result)
+    result["inspection_report"] = await generate_inspection_report(result)
 
     return result
