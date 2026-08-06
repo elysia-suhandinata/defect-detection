@@ -9,7 +9,8 @@ RUN pip install --no-cache-dir \
     fastapi \
     uvicorn \
     python-multipart \
-    pydantic
+    pydantic \
+    anthropic
 
 EXPOSE 8000
 
