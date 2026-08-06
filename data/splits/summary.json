@@ -1,0 +1,10 @@
+{
+  "seed": 42,
+  "counts": {
+    "train": 8796,
+    "val": 1885,
+    "test": 1887
+  },
+  "class2_in_test": 38,
+  "note": "Real images only. Do not add synthetics to test."
+}
