@@ -7,12 +7,14 @@ __pycache__/
 *.egg-info/
 .pytest_cache/
 
-# Large / local artifacts
+# Large / local artifacts (checkpoints under runs/ are tracked via Git LFS)
 *.pt
 *.pth
-runs/
+!runs/
+!runs/**/*.pt
 severstal-steel-defect-detection/
 severstal-steel-defect-detection.zip
+logs/
 
 # Raw images live via local junction / download — keep only small CSVs tracked
 data/*
