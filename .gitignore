@@ -24,3 +24,4 @@ data/severstal/*
 data/splits/*
 !data/splits/*.txt
 !data/splits/summary.json
+!app/models/unet_weighted_best.pt
