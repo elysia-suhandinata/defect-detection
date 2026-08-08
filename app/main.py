@@ -1,6 +1,6 @@
 from fastapi import FastAPI, File, HTTPException, UploadFile
 
-from app.inference import run_mock_inference
+from app.inference import run_inference
 from app.report_generator import generate_inspection_report
 
 
@@ -29,7 +29,13 @@ async def predict(file: UploadFile = File(...)) -> dict:
             detail="Only JPEG and PNG images are supported.",
         )
 
-    result = run_mock_inference(file.filename or "uploaded_image")
+    image_bytes = await file.read()
+
+    result = run_inference(
+        image_bytes=image_bytes,
+        filename=file.filename or "uploaded_image",
+    )
+
     result["inspection_report"] = await generate_inspection_report(result)
 
     return result
