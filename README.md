@@ -157,6 +157,7 @@ What each top-level folder is for:
 | Path | Purpose |
 |------|---------|
 | `app/` | Classification app package. `app/models/` holds DefectCNN, cVAE, train/eval scripts, and `.pth` weights. |
+| `app/evaluation/`, `evaluate_all.py` | Unified evaluation pipeline: reruns all seven classification checkpoints on the committed val split with PR-AUC, cost-sensitivity analysis, and a reproducibility manifest. |
 | `notebooks/` | One-off notebooks: build multi-label CSVs, class-imbalance plots, VAE-augmented splits. |
 | `src/rare_defect/` | Segmentation library (importable package): datasets, U-Net / generators, losses, metrics, training loops. |
 | `src/rare_defect/data/` | Load Severstal images/masks, RLE, splits, copy-paste / photo aug. |
@@ -167,13 +168,15 @@ What each top-level folder is for:
 | `data/severstal/` | Classification train/val label CSVs (tracked). |
 | `data/splits/` | Frozen Train/Val/Test image ids for segmentation (tracked). |
 | `data/severstal-steel-defect-detection/` | Kaggle raw dump (`train.csv`, `train_images/`) — local only, not committed. |
-| `results/` | Metric tables + `figures/` qualitative plots (tracked). `results.csv` (classification), `seg_5ep_*.csv` (segmentation). |
+| `results/` | Metric tables + `figures/` qualitative plots (tracked). `results.csv` (classification), `seg_5ep_*.csv` (segmentation), `unified/` (unified evaluation output). |
 | `runs/` | Local experiment outputs: checkpoints + per-arm `test_metrics.json`. Ignored by git. |
 | `logs/` | Optional run logs (local). |
 
 ```
 defect-detection/
   app/models/              # Classification CNN + cVAE
+  app/evaluation/          # Unified classifier evaluation (PR-AUC, cost sensitivity)
+  evaluate_all.py          # Entry point for unified evaluation
   notebooks/               # Label / imbalance / VAE helpers
   src/rare_defect/         # Segmentation package
     data/ models/ training/
@@ -214,6 +217,21 @@ uv sync
 
 Use a CUDA build of PyTorch when available (`device: cuda` in `configs/default.yaml`).
 
+## Running the API
+
+Build and run the Docker container:
+
+    docker build -t defect-api .
+    docker run -p 8000:8000 -e ANTHROPIC_API_KEY=your_key_here defect-api
+
+The `ANTHROPIC_API_KEY` is optional — if omitted or if the LLM call fails, the API falls back to a rule-based inspection report instead of an LLM-generated one, so the container still runs and returns complete results without it.
+
+Query the running API:
+
+    curl -X POST http://localhost:8000/predict -F "file=@path/to/image.jpg"
+
+Returns per-class defect probabilities, segmentation location/area (when available), and a plain-language inspection report.
+
 ## Classification
 
 From `app/models/`:
@@ -231,6 +249,51 @@ python evaluate_baseline.py
 ```
 
 Notebooks under `notebooks/` build the multi-label CSVs and VAE-augmented splits.
+
+## Unified classifier evaluation
+
+`evaluate_all.py` reruns every completed DefectCNN classifier on the one committed validation split. It does not retrain or modify any model. The seven required methods are: `baseline`, `weighted`, `oversampled`, `vae_augmented`, `vae_oversampled`, `gan_oversampled`, and `rl_oversampled`.
+
+### Prerequisite: labelled validation images
+
+The committed `data/severstal/val_split.csv` was built from Kaggle's labelled `train_images` files. **Do not use `test_images`:** Kaggle supplies no labels for them, so precision, recall, PR-AUC, and false-negative cost cannot be calculated. Authenticate Kaggle on the machine first (for example with a Kaggle API token), then download the competition files:
+
+```bash
+uv run --with kagglehub python - <<'PY'
+import kagglehub
+print(kagglehub.competition_download('severstal-steel-defect-detection'))
+PY
+```
+
+Pass the downloaded directory's `train_images` subdirectory to the command below. Alternatively, place or symlink it at `data/severstal/train_images`.
+
+### Exact evaluation command
+
+```bash
+uv run python evaluate_all.py \
+  --image-dir /absolute/path/from/kaggle/train_images \
+  --threshold 0.5 \
+  --fn-cost 10 --fp-cost 1 \
+  --fn-fp-ratios 1,2,5,10,20 \
+  --output-dir results/unified
+```
+
+The default threshold-dependent metrics use the same historical rule as the old scripts: `sigmoid(logit) > 0.5`. This makes it possible to compare the new precision, recall and F1 values against `results/results.csv`. A discrepancy larger than the configured rounding tolerance makes the command exit non-zero and is recorded in `results/unified/legacy_comparison.csv`.
+
+### Outputs
+
+- `metrics.csv`: every per-class, macro-average, and total metric row; it includes precision, recall, F1, average precision, PR-AUC, FNR, TP, FP, TN, FN, and the configured linear cost.
+- `predictions.csv.gz`: gzip-compressed, auditable rows per method, image, and class with `y_true`, sigmoid `y_score`, `y_pred`, and threshold. Read it directly with `pandas.read_csv("predictions.csv.gz")`, or regenerate it with the evaluation command above.
+- `legacy_comparison.csv`: the old and rerun threshold-0.5 metrics with deltas.
+- `cost_sensitivity.csv` and `figures/cost_sensitivity.png`: explicitly labelled FN:FP scenario assumptions. For each ratio, FP cost is held at `--fp-cost` and FN cost is `ratio * FP cost`.
+- `figures/model_comparison_macro_metrics.png` and one `figures/precision_recall_class_*.png` image per class.
+- `run_manifest.json`: command, methods, class ordering, input hashes, and generated artifact list for reproducibility.
+
+### Focused tests
+
+```bash
+uv run python -m unittest discover -s tests -v
+```
 
 ## Segmentation + generative selection
 
