@@ -48,7 +48,7 @@ class GenerateInspectionReportTests(unittest.IsolatedAsyncioTestCase):
         )
         mock_client.messages.create.assert_called_once()
         _, kwargs = mock_client.messages.create.call_args
-        self.assertEqual(kwargs["model"], "claude-opus-5")
+        self.assertEqual(kwargs["model"], "claude-sonnet-5")
         self.assertIn("class_3", kwargs["messages"][0]["content"])
 
     @patch("app.report_generator.anthropic.AsyncAnthropic")
