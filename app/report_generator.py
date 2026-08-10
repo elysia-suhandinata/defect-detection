@@ -5,7 +5,7 @@ import anthropic
 
 logger = logging.getLogger(__name__)
 
-_MODEL = "claude-opus-5"
+_MODEL = "claude-sonnet-5"
 
 _SYSTEM_PROMPT = (
     "You are a quality-control assistant writing plain-language steel "
