@@ -232,6 +232,34 @@ Query the running API:
 
 Returns per-class defect probabilities, segmentation location/area (when available), and a plain-language inspection report.
 
+### Example
+
+Input: `002fc4e19.jpg` from the labelled Kaggle set (ground truth: Class 1 + Class 2, both present).
+
+![Example input sheet](results/figures/report_example_input.jpg)
+
+Response from `POST /predict`, `claude-sonnet-5` (real API call, not the fallback template):
+
+```json
+{
+  "filename": "002fc4e19.jpg",
+  "predictions": [
+    { "defect_class": "class_1", "probability": 0.310, "detected": false },
+    { "defect_class": "class_2", "probability": 0.565, "detected": true },
+    { "defect_class": "class_3", "probability": 0.139, "detected": false },
+    { "defect_class": "class_4", "probability": 0.019, "detected": false }
+  ],
+  "segmentation": {
+    "available": true,
+    "location": "bottom",
+    "defect_area_percent": 0.458
+  },
+  "inspection_report": "Sheet 002fc4e19.jpg shows a detected class_2 defect with a probability of 0.565. Segmentation data indicates the defect is located at the bottom of the sheet, covering approximately 0.5% of its surface area. Given the moderate probability, additional manual inspection is recommended before further action."
+}
+```
+
+The classifier correctly flags the Class-2 defect the report is built around (0.565); it misses the co-occurring Class-1 defect also present in this image's ground truth (0.310, below the 0.5 threshold) — a real limitation, not hidden here.
+
 ## Classification
 
 From `app/models/`:
